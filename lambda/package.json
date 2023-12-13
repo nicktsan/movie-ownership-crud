@@ -1,0 +1,24 @@
+{
+  "name": "put_movie_ownership",
+  "version": "1.0.0",
+  "description": "movie_ownership_crud",
+  "main": "index.js",
+  "repository": "https://github.com/nicktsan/movie-ownership-crud",
+  "author": "Nicholas Tsang",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "build": "rm -rf dist && npx swc ./src -d ./dist --ignore \"**/*.test.ts,**/__test__/**\"",
+    "lint": "eslint \"src/**/*.{json,js,jsx,ts,tsx}\" && tsc --noemit",
+    "package": "mkdir -p dist/layers/deps-layer/nodejs && mkdir -p dist/layers/util-layer/nodejs && mkdir -p dist/handlers/put_movie_ownership && cp package*.json dist/layers/deps-layer/nodejs && cp yarn.lock dist/layers/deps-layer/nodejs && mv dist/layers/util-layer/utils.js* dist/layers/util-layer/nodejs && cd dist/layers/deps-layer/nodejs && yarn --modules-folder node_modules --frozen-lockfile --production=true",
+    "deploy": "terraform -chdir=infrastructure apply"
+  },
+  "devDependencies": {
+    "@swc/cli": "^0.1.63",
+    "@swc/core": "^1.3.100",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0",
+    "eslint": "^8.55.0",
+    "typescript": "5.2.2"
+  }
+}
