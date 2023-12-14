@@ -6,7 +6,7 @@ Console Command Example: export STRIPE_API_KEY="<api-key>"
 Configure hashicorp vault: https://developer.hashicorp.com/vault/tutorials/hcp-vault-secrets-get-started/hcp-vault-secrets-install-cli
 export HCP_CLIENT_ID=<copied-id>
 export HCP_CLIENT_SECRET=<copied-secret>
-Run vlt secrets list to review the existing secrets.
+Run "vlt secrets list" to review the existing secrets.
 check HCP environment variables: printenv | grep HCP_
 
 First, ensure you have the AWS_PROFILE environment variable set to your desired user.
