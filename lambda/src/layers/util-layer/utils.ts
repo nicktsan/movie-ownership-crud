@@ -1,6 +1,11 @@
 import { EventBridgeEvent /*, Context, Callback*/ } from "aws-lambda";
 import Stripe from "stripe";
 
+interface TEventVerification {
+    isVerified: boolean,
+    constructedEvent: Stripe.Event | undefined
+}
+
 const getStripe = async (stripe: Stripe | null): Promise<Stripe | null> => {
     //if no stripe instance, instantiate a new stripe instance. Otherwise, return the existing stripe instance without
     //instantiating a new one.
@@ -16,21 +21,24 @@ const getStripe = async (stripe: Stripe | null): Promise<Stripe | null> => {
 };
 
 //Ensures the message is a genuine stripe message
-async function verifyMessageAsync(message: EventBridgeEvent<any, any>, stripe: Stripe | null): Promise<boolean> {
+async function verifyMessageAsync(message: EventBridgeEvent<any, any>, stripe: Stripe | null): Promise<TEventVerification> {
     const payload = message.detail.data;
     const sig = message.detail.stripeSignature
     console.log('stripe signature ', sig);
     console.log(`Processed message ${payload}`);
-    let event;
+    const eventVerification: TEventVerification = {
+        isVerified: false,
+        constructedEvent: undefined
+    };
     try {
-        event = stripe?.webhooks.constructEvent(payload, sig!, process.env.STRIPE_SIGNING_SECRET!);
+        eventVerification.constructedEvent = stripe?.webhooks.constructEvent(payload, sig!, process.env.STRIPE_SIGNING_SECRET!);
+        eventVerification.isVerified = true;
     } catch (err: unknown) {
         if (err instanceof Error) {
             console.error(`Webhook Error: ${err.message}`);
         }
-        return false
     }
-    return true
+    return eventVerification
 }
 
-export { getStripe, verifyMessageAsync }
+export { TEventVerification, getStripe, verifyMessageAsync }
