@@ -1,6 +1,7 @@
 import { EventBridgeEvent /*, Context, Callback*/ } from "aws-lambda";
 import Stripe from "stripe";
 
+//An interface for the purposes of returning both a boolean and a Stripe.Event for verifyMessageAsync
 interface TEventVerification {
     isVerified: boolean,
     constructedEvent: Stripe.Event | undefined
@@ -26,11 +27,13 @@ async function verifyMessageAsync(message: EventBridgeEvent<any, any>, stripe: S
     const sig = message.detail.stripeSignature
     console.log('stripe signature ', sig);
     console.log(`Processed message ${payload}`);
+    //Initialize a new TEventVerification with default values
     const eventVerification: TEventVerification = {
         isVerified: false,
         constructedEvent: undefined
     };
     try {
+        //Use Stripe's constructEvent method to verify the message
         eventVerification.constructedEvent = stripe?.webhooks.constructEvent(payload, sig!, process.env.STRIPE_SIGNING_SECRET!);
         eventVerification.isVerified = true;
     } catch (err: unknown) {
