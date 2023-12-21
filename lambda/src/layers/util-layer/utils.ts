@@ -49,6 +49,7 @@ async function verifyEventAsync(event: EventBridgeEvent<any, any>, stripe: Strip
 // Movie Title <- unique key. Retreivable via lineItemdata.price.metadata or through lineItemdata.price.product lookup.
 // Type of purchase (rent or buy) and rent duration if it is a rented movie. Retrievable via lineItemdata.price.nickname
 // Time and date of purchase retrievable via event.detail.data.data.object.created. 
+// Time and date of rental expiry.
 function fulfillOrder(lineItemdata: Stripe.LineItem/*, stripe: Stripe | null*/, event: EventBridgeEvent<any, any>): void {
     console.log("lineItemdata.price: ", lineItemdata.price)
     //Get customer email <- unique key
@@ -63,8 +64,16 @@ function fulfillOrder(lineItemdata: Stripe.LineItem/*, stripe: Stripe | null*/, 
     const purchaseType = lineItemdata.price?.nickname
     console.log("purchase type: ", purchaseType)
     //Get time and date of purchase
-    const purchaseDateEpoch = eventDetailData.data.object.created
-    console.log("purchase date (unix epoch): ", purchaseDateEpoch)
+    const purchaseDateEpochSeconds = eventDetailData.data.object.created
+    console.log("purchase date (unix epoch): ", purchaseDateEpochSeconds)
+    //Determine if purchase type is rental
+    if (purchaseType?.toLowerCase().includes("rental")) {
+        //Calculate rental expiry date
+        const rentalExpiryDateEpochSeconds = purchaseDateEpochSeconds + 60 * 60 * 24 * 3
+        console.log("rentalExpiryDateEpochSeconds: ", rentalExpiryDateEpochSeconds)
+    }
+
+
     return
 }
 
