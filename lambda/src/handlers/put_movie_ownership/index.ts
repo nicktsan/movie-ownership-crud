@@ -1,6 +1,6 @@
 import { EventBridgeEvent, EventBridgeHandler } from "aws-lambda";
 import Stripe from "stripe";
-import { getStripe, verifyMessageAsync, } from "/opt/nodejs/utils";
+import { getStripe, verifyEventAsync, fulfillOrder } from "/opt/nodejs/utils";
 
 let stripe: Stripe | null;
 const handler: EventBridgeHandler<any, any, any> = async (event: EventBridgeEvent<any, any>): Promise<void> => {
@@ -8,7 +8,7 @@ const handler: EventBridgeHandler<any, any, any> = async (event: EventBridgeEven
     stripe = await getStripe(stripe);
     console.log("EventbridgeEvent:")
     console.log(event)
-    const eventVerification = await verifyMessageAsync(event, stripe);
+    const eventVerification = await verifyEventAsync(event, stripe);
     if (!stripe) {
         console.info("stripe is null. Nothing processed.")
     } else if (!eventVerification.isVerified) {
@@ -22,18 +22,20 @@ const handler: EventBridgeHandler<any, any, any> = async (event: EventBridgeEven
         const myConstructedEventObjectId = myConstructedEventObject.id
 
         console.log("myConstructedEventObjectId", myConstructedEventObjectId)
-        const sessionWithLineItems = await stripe?.checkout.sessions.retrieve
-            (
-                myConstructedEventObjectId,
-                {
-                    expand
-                        : ['line_items'],
-                }
-            );
+        const sessionWithLineItems = await stripe?.checkout.sessions.retrieve(
+            myConstructedEventObjectId,
+            {
+                expand
+                    : ['line_items'],
+            }
+        );
         const lineItems = sessionWithLineItems.line_items;
-        console.log("lineItems?.data[0].price", lineItems?.data[0].price)
-        // Fulfill the purchase...
-        fulfillOrder(lineItems);
+        // console.log("lineItems?.data[0].price", lineItems?.data[0].price)
+        lineItems?.data.forEach(lineItemdata => {
+            // Fulfill the purchase...
+            fulfillOrder(lineItemdata/*, stripe*/, event);
+        });
+
     }
 }
 
