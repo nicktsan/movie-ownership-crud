@@ -64,3 +64,13 @@ variable "put_movie_ownership_eventbridge_event_rule_name" {
   description = "Name of put_movie_ownership_eventbridge_event_rule"
   type        = string
 }
+
+variable "dynamodb_table" {
+  description = "Name of the dynamodb table for movie ownership crud app"
+  type        = string
+}
+
+variable "lambda_to_dynamodb_crud_policy_name" {
+  description = "Name of the policy for lambdas to perform crud operations on dynamodb tables"
+  type        = string
+}

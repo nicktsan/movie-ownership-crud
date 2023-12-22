@@ -31,6 +31,7 @@ resource "aws_lambda_function" "put_movie_ownership_lambda_function" {
     variables = {
       STRIPE_SECRET         = data.hcp_vault_secrets_secret.stripeSecret.secret_value
       STRIPE_SIGNING_SECRET = data.hcp_vault_secrets_secret.stripeSigningSecret.secret_value
+      DYNAMODB_NAME         = var.dynamodb_table
       # STRIPE_EVENT_BUS           = var.event_bus_name
       # stripe_lambda_event_source = var.stripe_lambda_event_source
     }
@@ -135,4 +136,42 @@ resource "aws_lambda_permission" "allow_cloudwatch" {
   function_name = aws_lambda_function.put_movie_ownership_lambda_function.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.put_movie_ownership_eventbridge_event_rule.arn
+}
+
+# Create a DynamoDB table to store ownership data
+resource "aws_dynamodb_table" "movie_ownership_table" {
+  name           = var.dynamodb_table
+  billing_mode   = "PROVISIONED"
+  read_capacity  = 25
+  write_capacity = 25
+  hash_key       = "customer" #partition key
+  range_key      = "title"    #sort key
+
+  attribute {
+    name = "customer"
+    type = "S"
+  }
+
+  attribute {
+    name = "title"
+    type = "S"
+  }
+
+}
+
+# Create a policy to allow lambdas to perform crud operations on dynamodb tables
+resource "aws_iam_policy" "lambda_to_dynamodb_crud_policy" {
+  name        = var.lambda_to_dynamodb_crud_policy_name
+  path        = "/"
+  description = "IAM policy to allow lambdas to perform crud operations on dynamodb tables"
+  policy      = data.template_file.lambda_to_dynamodb_crud_policy_template.rendered
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Attach lambda_to_dynamodb_crud_policy to movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_role
+resource "aws_iam_role_policy_attachment" "lambda_to_dynamodb_crud_policy_attachment" {
+  role       = aws_iam_role.movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_role.name
+  policy_arn = aws_iam_policy.lambda_to_dynamodb_crud_policy.arn
 }

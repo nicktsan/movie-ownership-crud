@@ -1,5 +1,7 @@
 import { EventBridgeEvent /*, Context, Callback*/ } from "aws-lambda";
 import Stripe from "stripe";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { PutCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 
 //An interface for the purposes of returning both a boolean and a Stripe.Event for verifyEventAsync
 interface TEventVerification {
@@ -15,10 +17,28 @@ const getStripe = async (stripe: Stripe | null): Promise<Stripe | null> => {
             apiVersion: '2023-10-16',
         });
         // console.log("Instantiated a new Stripe object.")
-    } else {
-        // console.log("Found an existing Stripe object instance.")
     }
     return stripe;
+};
+
+const getClient = async (client: DynamoDBClient | null): Promise<DynamoDBClient | null> => {
+    //if no DynamoDBClient instance, instantiate a new DynamoDBClient instance. Otherwise, return the existing 
+    //DynamoDBClient instance without instantiating a new one.
+    if (!client) {
+        client = new DynamoDBClient({});
+        console.log("Instantiated a new DynamoDBClient object.")
+    }
+    return client;
+};
+
+const getDocClient = async (client: DynamoDBClient | null, docClient: DynamoDBDocumentClient | null): Promise<DynamoDBDocumentClient | null> => {
+    //if no DynamoDBDocumentClient instance, instantiate a new DynamoDBDocumentClient instance. Otherwise, return the existing DynamoDBDocumentClient instance without
+    //instantiating a new one.
+    if (!docClient) {
+        docClient = DynamoDBDocumentClient.from(client!);
+        console.log("Instantiated a new DynamoDBDocumentClient object.")
+    }
+    return docClient;
 };
 
 //Ensures the event is a genuine stripe event
@@ -50,7 +70,7 @@ async function verifyEventAsync(event: EventBridgeEvent<any, any>, stripe: Strip
 // Type of purchase (rent or buy) and rent duration if it is a rented movie. Retrievable via lineItemdata.price.nickname
 // Time and date of purchase retrievable via event.detail.data.data.object.created. 
 // Time and date of rental expiry.
-function fulfillOrder(lineItemdata: Stripe.LineItem/*, stripe: Stripe | null*/, event: EventBridgeEvent<any, any>): void {
+async function fulfillOrder(lineItemdata: Stripe.LineItem/*, stripe: Stripe | null*/, event: EventBridgeEvent<any, any>, docClient: DynamoDBDocumentClient | null): Promise<void> {
     console.log("lineItemdata.price: ", lineItemdata.price)
     //Get customer email <- unique key
     const eventDetailData = JSON.parse(event.detail.data)
@@ -67,15 +87,26 @@ function fulfillOrder(lineItemdata: Stripe.LineItem/*, stripe: Stripe | null*/, 
     const purchaseDateEpochSeconds = eventDetailData.data.object.created
     console.log("purchase date (unix epoch): ", purchaseDateEpochSeconds)
     //Determine if purchase type is rental
+    let rentalExpiryDateEpochSeconds: any = 0
     if (purchaseType?.toLowerCase().includes("rental")) {
         //Calculate rental expiry date
-        const rentalExpiryDateEpochSeconds = purchaseDateEpochSeconds + 60 * 60 * 24 * 3
+        rentalExpiryDateEpochSeconds = purchaseDateEpochSeconds + 60 * 60 * 24 * 3
         console.log("rentalExpiryDateEpochSeconds: ", rentalExpiryDateEpochSeconds)
     }
+    const command = new PutCommand({
+        TableName: process.env.DYNAMODB_NAME,
+        Item: {
+            customer: email,
+            title: title,
+            purchaseType: purchaseType,
+            purchaseDateEpochSeconds: purchaseDateEpochSeconds,
+            rentalExpiryDateEpochSeconds: rentalExpiryDateEpochSeconds
+        },
+    });
 
-
-    return
+    const response = await docClient?.send(command);
+    console.log(response);
 }
 
 
-export { TEventVerification, getStripe, verifyEventAsync, fulfillOrder }
+export { TEventVerification, getStripe, getClient, getDocClient, verifyEventAsync, fulfillOrder }

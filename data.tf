@@ -41,6 +41,7 @@ data "aws_iam_policy" "lambda_basic_execution_role_policy" {
   name = "AWSLambdaBasicExecutionRole"
 }
 
+# template file to use for the PUT event rule pattern.
 data "template_file" "put_movie_ownership_eventbridge_event_rule_pattern_template" {
   template = file("./template/put_movie_ownership_eventbridge_event_rule_pattern.tpl")
 
@@ -51,6 +52,16 @@ data "template_file" "put_movie_ownership_eventbridge_event_rule_pattern_templat
   }
 }
 
+# Eventbridge Event Bus that the PUT and DELETE lambdas will be sourcing events from
 data "aws_cloudwatch_event_bus" "stripe_webhook_event_bus" {
   name = var.event_bus_name
+}
+
+#template file for the policy to allow lambdas to perform CRUD operations on dynamodb tables
+data "template_file" "lambda_to_dynamodb_crud_policy_template" {
+  template = file("./template/lambda_to_dynamodb_crud_policy.tpl")
+
+  vars = {
+    dynamodb_table = var.dynamodb_table
+  }
 }
