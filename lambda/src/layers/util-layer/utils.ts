@@ -1,6 +1,6 @@
 import { EventBridgeEvent /*, Context, Callback*/ } from "aws-lambda";
 import Stripe from "stripe";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBClient, ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import { PutCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 
 //An interface for the purposes of returning both a boolean and a Stripe.Event for verifyEventAsync
@@ -56,7 +56,7 @@ async function verifyEventAsync(event: EventBridgeEvent<any, any>, stripe: Strip
         //Use Stripe's constructEvent method to verify the event
         eventVerification.constructedEvent = stripe?.webhooks.constructEvent(payload, sig!, process.env.STRIPE_SIGNING_SECRET!);
         eventVerification.isVerified = true;
-    } catch (err: unknown) {
+    } catch (err) {
         if (err instanceof Error) {
             console.error(`Webhook Error: ${err.message}`);
         }
@@ -93,6 +93,7 @@ async function fulfillOrder(lineItemdata: Stripe.LineItem/*, stripe: Stripe | nu
         rentalExpiryDateEpochSeconds = purchaseDateEpochSeconds + 60 * 60 * 24 * 3
         console.log("rentalExpiryDateEpochSeconds: ", rentalExpiryDateEpochSeconds)
     }
+
     const command = new PutCommand({
         TableName: process.env.DYNAMODB_NAME,
         Item: {
@@ -104,10 +105,17 @@ async function fulfillOrder(lineItemdata: Stripe.LineItem/*, stripe: Stripe | nu
         },
         ConditionExpression: 'attribute_not_exists(customer) AND attribute_not_exists(title)'
     });
-
-    const response = await docClient?.send(command);
-    console.log(response);
+    try {
+        const response = await docClient?.send(command);
+        console.log(response);
+    } catch (err) {
+        if (err instanceof ConditionalCheckFailedException) {
+            console.warn(`Entry containing customer and title already found. PUT operation stopped.`)
+            console.warn(err.message)
+        } else {
+            throw err
+        }
+    }
 }
-
 
 export { TEventVerification, getStripe, getClient, getDocClient, verifyEventAsync, fulfillOrder }

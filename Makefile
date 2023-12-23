@@ -6,7 +6,6 @@ validate:
 	terraform validate
 
 plan:
-	terraform validate
 	terraform plan -var-file input.tfvars -out out.tfplan
 
 apply:
