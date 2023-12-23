@@ -102,6 +102,7 @@ async function fulfillOrder(lineItemdata: Stripe.LineItem/*, stripe: Stripe | nu
             purchaseDateEpochSeconds: purchaseDateEpochSeconds,
             rentalExpiryDateEpochSeconds: rentalExpiryDateEpochSeconds
         },
+        ConditionExpression: 'attribute_not_exists(customer) AND attribute_not_exists(title)'
     });
 
     const response = await docClient?.send(command);

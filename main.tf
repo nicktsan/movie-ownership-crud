@@ -175,3 +175,5 @@ resource "aws_iam_role_policy_attachment" "lambda_to_dynamodb_crud_policy_attach
   role       = aws_iam_role.movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_role.name
   policy_arn = aws_iam_policy.lambda_to_dynamodb_crud_policy.arn
 }
+
+# TODO implement DELETE and GET functionality
