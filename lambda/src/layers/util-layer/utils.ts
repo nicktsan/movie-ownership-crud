@@ -70,7 +70,7 @@ async function verifyEventAsync(event: EventBridgeEvent<any, any>, stripe: Strip
 // Type of purchase (rent or buy) and rent duration if it is a rented movie. Retrievable via lineItemdata.price.nickname
 // Time and date of purchase retrievable via event.detail.data.data.object.created. 
 // Time and date of rental expiry.
-async function fulfillOrder(lineItemdata: Stripe.LineItem/*, stripe: Stripe | null*/, event: EventBridgeEvent<any, any>, docClient: DynamoDBDocumentClient | null): Promise<void> {
+async function fulfillOrder(lineItemdata: Stripe.LineItem, event: EventBridgeEvent<any, any>, docClient: DynamoDBDocumentClient | null): Promise<Record<string, any> | null> {
     console.log("lineItemdata.price: ", lineItemdata.price)
     //Get customer email <- unique key
     const eventDetailData = JSON.parse(event.detail.data)
@@ -94,15 +94,24 @@ async function fulfillOrder(lineItemdata: Stripe.LineItem/*, stripe: Stripe | nu
         console.log("rentalExpiryDateEpochSeconds: ", rentalExpiryDateEpochSeconds)
     }
 
+    const ownershipDetails: Record<string, any> = {
+        customer: email,
+        title: title,
+        purchaseType: purchaseType,
+        purchaseDateEpochSeconds: purchaseDateEpochSeconds,
+        rentalExpiryDateEpochSeconds: rentalExpiryDateEpochSeconds
+    }
+
     const command = new PutCommand({
         TableName: process.env.DYNAMODB_NAME,
-        Item: {
-            customer: email,
-            title: title,
-            purchaseType: purchaseType,
-            purchaseDateEpochSeconds: purchaseDateEpochSeconds,
-            rentalExpiryDateEpochSeconds: rentalExpiryDateEpochSeconds
-        },
+        // Item: {
+        //     customer: email,
+        //     title: title,
+        //     purchaseType: purchaseType,
+        //     purchaseDateEpochSeconds: purchaseDateEpochSeconds,
+        //     rentalExpiryDateEpochSeconds: rentalExpiryDateEpochSeconds
+        // },
+        Item: ownershipDetails,
         ConditionExpression: 'attribute_not_exists(customer) AND attribute_not_exists(title)'
     });
     try {
@@ -112,10 +121,21 @@ async function fulfillOrder(lineItemdata: Stripe.LineItem/*, stripe: Stripe | nu
         if (err instanceof ConditionalCheckFailedException) {
             console.warn(`Entry containing customer and title already found. PUT operation stopped.`)
             console.warn(err.message)
+            return null
         } else {
             throw err
         }
     }
+    if (purchaseType?.toLowerCase().includes("rental")) {
+        return ownershipDetails
+    }
+    return null
 }
 
-export { TEventVerification, getStripe, getClient, getDocClient, verifyEventAsync, fulfillOrder }
+async function scheduleDeleteMovieOwnership(ownershipDetails: Record<string, any>): Promise<void> {
+    if (ownershipDetails.purchaseType.toLowerCase().includes("rental")) {
+        // implement schedule calling and creation
+        console.log("Scheduling future ownership deletion.")
+    }
+}
+export { TEventVerification, getStripe, getClient, getDocClient, verifyEventAsync, fulfillOrder, scheduleDeleteMovieOwnership }
