@@ -5,6 +5,9 @@
         },
         "target": "es2016"
     },
+    "exclude": [
+        ".*.test.ts$"
+    ],
     "module": {
         "type": "commonjs"
     },

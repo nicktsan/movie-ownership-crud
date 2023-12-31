@@ -1,3 +1,8 @@
+variable "environment" {
+  description = "Name of the execution environment"
+  type        = string
+}
+
 variable "stripe_secret_key" {
   description = "Key of the stripe secret stored in hcp vault secrets"
   type        = string
@@ -55,12 +60,62 @@ variable "event_bus_name" {
   type        = string
 }
 
-variable "stripe_webhook_event_type" {
+variable "stripe_checkout_session_completed_event_type" {
   description = "Event type of the stripe webhook event being sent to the PUT movie_ownership_crud lambda"
   type        = string
 }
 
 variable "put_movie_ownership_eventbridge_event_rule_name" {
   description = "Name of put_movie_ownership_eventbridge_event_rule"
+  type        = string
+}
+
+variable "dynamodb_table" {
+  description = "Name of the dynamodb table for movie ownership crud app"
+  type        = string
+}
+
+variable "lambda_to_dynamodb_crud_policy_name" {
+  description = "Name of the policy for lambdas to perform crud operations on dynamodb tables"
+  type        = string
+}
+
+variable "movie_ownership_crud_schedule_group_name" {
+  description = "Name of the schedule group for the movie ownership crud app in eventbridge"
+  type        = string
+}
+
+variable "delete_movie_ownership_lambda_name" {
+  description = "Name of the lambda function to delete movie ownership"
+  type        = string
+}
+
+variable "EventBridgeSchedulerRoleName" {
+  description = "Name of the Eventbridge Scheduler role"
+  type        = string
+}
+
+variable "EventBridgeSchedulerPolicyName" {
+  description = "Name of the IAM policy that allows eventbridge to invoke lambdas"
+  type        = string
+}
+
+variable "eventbridge_scheduler_delete_movie_ownership_dlq_name" {
+  description = "Name of the DLQ that receives failed messages from the eventbridge scheduler"
+  type        = string
+}
+
+variable "delete_movie_ownership_eventbridge_event_rule_name" {
+  description = "Name of the Event rule to send messages to delete_movie_ownership lambda function"
+  type        = string
+}
+
+variable "delete_movie_ownership_event_type" {
+  description = "Event type for the delete movie ownership event rule pattern rule"
+  type        = string
+}
+
+variable "stripe_eventbridge_scheduler_event_source" {
+  description = "Event source for the delete movie ownership event rule pattern rule"
   type        = string
 }

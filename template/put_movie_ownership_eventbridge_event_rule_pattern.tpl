@@ -1,4 +1,4 @@
 {
-  "detail-type": ["${eventType}"],
-  "source": ["${eventSource}"]
+  "detail-type": ["${stripeCheckoutSessionCompletedEventType}"],
+  "source": ["${stripeLambdaEventSource}"]
 }

@@ -9,7 +9,7 @@ resource "aws_iam_role_policy_attachment" "attach_cloudwatch_iam_policy_for_lamb
   role       = aws_iam_role.movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_role.name
   policy_arn = data.aws_iam_policy.lambda_basic_execution_role_policy.arn
 }
-
+########################PUT MOVIE OWNERSHIP##########################
 # lambda to receive message from eventbridge and put data to dynamodb
 resource "aws_lambda_function" "put_movie_ownership_lambda_function" {
   filename      = data.archive_file.put_movie_ownership_zip.output_path
@@ -31,6 +31,7 @@ resource "aws_lambda_function" "put_movie_ownership_lambda_function" {
     variables = {
       STRIPE_SECRET         = data.hcp_vault_secrets_secret.stripeSecret.secret_value
       STRIPE_SIGNING_SECRET = data.hcp_vault_secrets_secret.stripeSigningSecret.secret_value
+      DYNAMODB_NAME         = var.dynamodb_table
       # STRIPE_EVENT_BUS           = var.event_bus_name
       # stripe_lambda_event_source = var.stripe_lambda_event_source
     }
@@ -136,3 +137,116 @@ resource "aws_lambda_permission" "allow_cloudwatch" {
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.put_movie_ownership_eventbridge_event_rule.arn
 }
+
+# Create a DynamoDB table to store ownership data
+resource "aws_dynamodb_table" "movie_ownership_table" {
+  name           = var.dynamodb_table
+  billing_mode   = "PROVISIONED"
+  read_capacity  = 25
+  write_capacity = 25
+  hash_key       = "customer" #partition key
+  range_key      = "title"    #sort key
+
+  attribute {
+    name = "customer"
+    type = "S"
+  }
+
+  attribute {
+    name = "title"
+    type = "S"
+  }
+
+}
+
+# Create a policy to allow lambdas to perform crud operations on dynamodb tables
+resource "aws_iam_policy" "lambda_to_dynamodb_crud_policy" {
+  name        = var.lambda_to_dynamodb_crud_policy_name
+  path        = "/"
+  description = "IAM policy to allow lambdas to perform crud operations on dynamodb tables"
+  policy      = data.template_file.lambda_to_dynamodb_crud_policy_template.rendered
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Attach lambda_to_dynamodb_crud_policy to movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_role
+resource "aws_iam_role_policy_attachment" "lambda_to_dynamodb_crud_policy_attachment" {
+  role       = aws_iam_role.movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_role.name
+  policy_arn = aws_iam_policy.lambda_to_dynamodb_crud_policy.arn
+}
+###############DELETE MOVIE OWNERSHIP#####################
+# Create a lambda function to delete movie ownership. It receives events from eventbridge scheduler
+resource "aws_lambda_function" "delete_movie_ownership_lambda_function" {
+  filename      = data.archive_file.delete_movie_ownership_zip.output_path
+  function_name = var.delete_movie_ownership_lambda_name
+  role          = aws_iam_role.movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_role.arn
+  handler       = "index.handler"
+
+  # The filebase64sha256() function is available in Terraform 0.11.12 and later
+  # For Terraform 0.11.11 and earlier, use the base64sha256() function and the file() function:
+  # source_code_hash = "${base64sha256(file("lambda_function_payload.zip"))}"
+  source_code_hash = data.archive_file.delete_movie_ownership_zip.output_base64sha256
+  runtime          = var.lambda_runtime
+  layers = [
+    aws_lambda_layer_version.lambda_deps_layer.arn,
+    aws_lambda_layer_version.lambda_utils_layer.arn
+  ]
+
+  # environment {
+  #   variables = {
+  #     STRIPE_SECRET         = data.hcp_vault_secrets_secret.stripeSecret.secret_value
+  #     STRIPE_SIGNING_SECRET = data.hcp_vault_secrets_secret.stripeSigningSecret.secret_value
+  #     DYNAMODB_NAME         = var.dynamodb_table
+  #     # STRIPE_EVENT_BUS           = var.event_bus_name
+  #     # stripe_lambda_event_source = var.stripe_lambda_event_source
+  #   }
+  # }
+}
+
+# Create an IAM role for Eventbridge scheduler
+resource "aws_iam_role" "EventBridgeSchedulerRole" {
+  name               = var.EventBridgeSchedulerRoleName
+  assume_role_policy = data.template_file.EventBridgeSchedulerRole_template.rendered
+}
+
+# Create an inline IAM policy for EventBridgeSchedulerRole to PutEvents to Eventbridge. If you want the policy
+# to be usable by other roles, use aws_iam_policy instead. Then, attach it to the aws_iam_role with
+# aws_iam_role_policy_attachment
+resource "aws_iam_role_policy" "eventbridge_scheduler_policy" {
+  name   = var.EventBridgeSchedulerPolicyName
+  role   = aws_iam_role.EventBridgeSchedulerRole.id
+  policy = data.template_file.EventBridgeSchedulerPolicy_template.rendered
+}
+
+# Create a new schedule group for the movie ownership crud app in eventbridge
+resource "aws_scheduler_schedule_group" "movie_ownership_crud_schedule_group" {
+  name = var.movie_ownership_crud_schedule_group_name
+}
+
+# DLQ for EventBridge Scheduler to store events that couldn't be delivered successfully to a target
+resource "aws_sqs_queue" "eventbridge_scheduler_delete_movie_ownership_dlq" {
+  name                      = var.eventbridge_scheduler_delete_movie_ownership_dlq_name
+  message_retention_seconds = 1209600
+  sqs_managed_sse_enabled   = true
+  #policy to allow eventbridge_scheduler_delete_movie_ownership_dlq to receive messages from anywhere. We can't give specific
+  #permissions because the scheduler will be generated in a lambda so we have to use allowAll.
+  redrive_allow_policy = jsonencode({
+    redrivePermission = "allowAll"
+  })
+  tags = {
+    Environment = var.environment
+  }
+}
+
+
+#Create a new Event Rule to send eventbridge messages to delete_movie_ownership_lambda_function
+resource "aws_cloudwatch_event_rule" "delete_movie_ownership_eventbridge_event_rule" {
+  name           = var.delete_movie_ownership_eventbridge_event_rule_name
+  event_pattern  = data.template_file.delete_movie_ownership_eventbridge_event_rule_pattern_template.rendered
+  event_bus_name = data.aws_cloudwatch_event_bus.stripe_webhook_event_bus.arn
+}
+
+# TODO implement DELETE and GET functionality
+# TODO implement DLQs for lambdas or eventbridge
+# TODO implement alerts for DLQs
