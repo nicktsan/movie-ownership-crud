@@ -9,37 +9,64 @@ resource "aws_iam_role_policy_attachment" "attach_cloudwatch_iam_policy_for_lamb
   role       = aws_iam_role.movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_role.name
   policy_arn = data.aws_iam_policy.lambda_basic_execution_role_policy.arn
 }
-########################PUT MOVIE OWNERSHIP##########################
-# lambda to receive message from eventbridge and put data to dynamodb
-resource "aws_lambda_function" "put_movie_ownership_lambda_function" {
-  filename      = data.archive_file.put_movie_ownership_zip.output_path
-  function_name = var.put_movie_ownership_lambda_name
-  role          = aws_iam_role.movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_role.arn
-  handler       = "index.handler"
-
-  # The filebase64sha256() function is available in Terraform 0.11.12 and later
-  # For Terraform 0.11.11 and earlier, use the base64sha256() function and the file() function:
-  # source_code_hash = "${base64sha256(file("lambda_function_payload.zip"))}"
-  source_code_hash = data.archive_file.put_movie_ownership_zip.output_base64sha256
-  runtime          = var.lambda_runtime
-  layers = [
+# Module for lambda to recieve messages from eventbridge and put data to dynamodb
+module "put_movie_ownership_lambda" {
+  source         = "./modules/lambda_to_dynamodb"
+  lambda_name    = var.put_movie_ownership_lambda_name
+  lambda_handler = var.lambda_handler
+  lambda_runtime = var.lambda_runtime
+  lambda_layers = [
     aws_lambda_layer_version.lambda_deps_layer.arn,
     aws_lambda_layer_version.lambda_utils_layer.arn
   ]
-
-  environment {
-    variables = {
-      STRIPE_SECRET         = data.hcp_vault_secrets_secret.stripeSecret.secret_value
-      STRIPE_SIGNING_SECRET = data.hcp_vault_secrets_secret.stripeSigningSecret.secret_value
-      DYNAMODB_NAME         = var.dynamodb_table
-      # STRIPE_EVENT_BUS           = var.event_bus_name
-      # stripe_lambda_event_source = var.stripe_lambda_event_source
-    }
+  # stripe_secret_key             = ""
+  # stripe_webhook_signing_secret = ""
+  # dynamodb_table                = ""
+  eventbridge_event_rule_name                       = var.put_movie_ownership_eventbridge_event_rule_name
+  eventbridge_event_rule_pattern_template_file_path = "./template/eventbridge_event_rule_pattern.tpl" //"../../template/eventbridge_event_rule_pattern.tpl"
+  stripe_lambda_event_source                        = var.stripe_lambda_event_source
+  event_type                                        = var.stripe_checkout_session_completed_event_type
+  event_bus_name                                    = var.event_bus_name
+  lambda_role                                       = aws_iam_role.movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_role.arn
+  # hcp_vault_secrets_app_name                        = ""
+  sourceDir  = "${path.module}/lambda/dist/handlers/put_movie_ownership/" //"../../lambda/dist/handlers/put_movie_ownership/"
+  outputPath = "${path.module}/lambda/dist/put_movie_ownership.zip"       //"../../lambda/dist/put_movie_ownership.zip"
+  environment_variables = {
+    STRIPE_SECRET         = data.hcp_vault_secrets_secret.stripeSecret.secret_value
+    STRIPE_SIGNING_SECRET = data.hcp_vault_secrets_secret.stripeSigningSecret.secret_value
+    DYNAMODB_NAME         = var.dynamodb_table
   }
 }
 
+########################PUT MOVIE OWNERSHIP##########################
+# lambda to receive message from eventbridge and put data to dynamodb
+# resource "aws_lambda_function" "put_movie_ownership_lambda_function" {
+#   filename      = data.archive_file.put_movie_ownership_zip.output_path
+#   function_name = var.put_movie_ownership_lambda_name
+#   role          = aws_iam_role.movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_role.arn
+#   handler       = var.lambda_handler
+
+#   # The filebase64sha256() function is available in Terraform 0.11.12 and later
+#   # For Terraform 0.11.11 and earlier, use the base64sha256() function and the file() function:
+#   # source_code_hash = "${base64sha256(file("lambda_function_payload.zip"))}"
+#   source_code_hash = data.archive_file.put_movie_ownership_zip.output_base64sha256
+#   runtime          = var.lambda_runtime
+#   layers = [
+#     aws_lambda_layer_version.lambda_deps_layer.arn,
+#     aws_lambda_layer_version.lambda_utils_layer.arn
+#   ]
+
+#   environment {
+#     variables = {
+#       STRIPE_SECRET         = data.hcp_vault_secrets_secret.stripeSecret.secret_value
+#       STRIPE_SIGNING_SECRET = data.hcp_vault_secrets_secret.stripeSigningSecret.secret_value
+#       DYNAMODB_NAME         = var.dynamodb_table
+#     }
+#   }
+# }
+
 resource "aws_lambda_layer_version" "lambda_deps_layer" {
-  layer_name = "movie_ownership_crud_shared_deps"
+  layer_name = var.movie_ownership_lambda_deps_layer_name
   s3_bucket  = aws_s3_bucket.dev_movie_ownership_crud_bucket.id #conflicts with filename
   s3_key     = aws_s3_object.lambda_deps_layer_s3_storage.key   #conflicts with filename
   // If using s3_bucket or s3_key, do not use filename, as they conflict
@@ -53,7 +80,7 @@ resource "aws_lambda_layer_version" "lambda_deps_layer" {
 }
 # Create an s3 resource for storing the utils_layer
 resource "aws_lambda_layer_version" "lambda_utils_layer" {
-  layer_name = "shared_utils"
+  layer_name = var.lambda_utils_layer_name
   s3_bucket  = aws_s3_bucket.dev_movie_ownership_crud_bucket.id #conflicts with filename
   s3_key     = aws_s3_object.lambda_utils_layer_s3_storage.key  #conflicts with filename
   # filename         = data.archive_file.utils_layer_code_zip.output_path
@@ -118,25 +145,25 @@ resource "aws_s3_bucket_ownership_controls" "dev_movie_ownership_crud_bucket_acl
 }
 
 #Create a new Event Rule to send eventbridge messages to put_movie_ownership_lambda_function
-resource "aws_cloudwatch_event_rule" "put_movie_ownership_eventbridge_event_rule" {
-  name           = var.put_movie_ownership_eventbridge_event_rule_name
-  event_pattern  = data.template_file.put_movie_ownership_eventbridge_event_rule_pattern_template.rendered
-  event_bus_name = data.aws_cloudwatch_event_bus.stripe_webhook_event_bus.arn
-}
+# resource "aws_cloudwatch_event_rule" "put_movie_ownership_eventbridge_event_rule" {
+#   name           = var.put_movie_ownership_eventbridge_event_rule_name
+#   event_pattern  = data.template_file.put_movie_ownership_eventbridge_event_rule_pattern_template.rendered
+#   event_bus_name = data.aws_cloudwatch_event_bus.stripe_webhook_event_bus.arn
+# }
 
 #Set the put_movie_ownership_lambda_function as a target for the Eventbridge rule
-resource "aws_cloudwatch_event_target" "put_movie_ownership_eventbridge_log_group_target" {
-  rule           = aws_cloudwatch_event_rule.put_movie_ownership_eventbridge_event_rule.name
-  arn            = aws_lambda_function.put_movie_ownership_lambda_function.arn
-  event_bus_name = data.aws_cloudwatch_event_bus.stripe_webhook_event_bus.arn
-}
+# resource "aws_cloudwatch_event_target" "put_movie_ownership_eventbridge_log_group_target" {
+#   rule           = aws_cloudwatch_event_rule.put_movie_ownership_eventbridge_event_rule.name
+#   arn            = aws_lambda_function.put_movie_ownership_lambda_function.arn
+#   event_bus_name = data.aws_cloudwatch_event_bus.stripe_webhook_event_bus.arn
+# }
 # Allow Eventbridge to invoke the lambda
-resource "aws_lambda_permission" "allow_cloudwatch" {
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.put_movie_ownership_lambda_function.function_name
-  principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.put_movie_ownership_eventbridge_event_rule.arn
-}
+# resource "aws_lambda_permission" "allow_cloudwatch" {
+#   action        = "lambda:InvokeFunction"
+#   function_name = aws_lambda_function.put_movie_ownership_lambda_function.function_name
+#   principal     = "events.amazonaws.com"
+#   source_arn    = aws_cloudwatch_event_rule.put_movie_ownership_eventbridge_event_rule.arn
+# }
 
 # Create a DynamoDB table to store ownership data
 resource "aws_dynamodb_table" "movie_ownership_table" {
@@ -175,34 +202,63 @@ resource "aws_iam_role_policy_attachment" "lambda_to_dynamodb_crud_policy_attach
   role       = aws_iam_role.movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_role.name
   policy_arn = aws_iam_policy.lambda_to_dynamodb_crud_policy.arn
 }
+
+# module "delete_movie_ownership_lambda" {
+#   source         = "./modules/lambda_to_dynamodb"
+#   lambda_name    = var.put_movie_ownership_lambda_name
+#   lambda_handler = var.lambda_handler
+#   lambda_runtime = var.lambda_runtime
+#   lambda_layers = [
+#     aws_lambda_layer_version.lambda_deps_layer.arn,
+#     aws_lambda_layer_version.lambda_utils_layer.arn
+#   ]
+#   # stripe_secret_key             = ""
+#   # stripe_webhook_signing_secret = ""
+#   # dynamodb_table                = ""
+#   eventbridge_event_rule_name                       = var.put_movie_ownership_eventbridge_event_rule_name
+#   eventbridge_event_rule_pattern_template_file_path = "../../template/eventbridge_event_rule_pattern.tpl"
+#   stripe_lambda_event_source                        = var.stripe_lambda_event_source
+#   event_type                                        = var.stripe_checkout_session_completed_event_type
+#   event_bus_name                                    = var.event_bus_name
+#   lambda_role                                       = aws_iam_role.movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_role.arn
+#   # hcp_vault_secrets_app_name                        = ""
+#   sourceDir  = "../../lambda/dist/handlers/put_movie_ownership/"
+#   outputPath = "../../lambda/dist/put_movie_ownership.zip"
+#   environment_variables = {
+#     STRIPE_SECRET         = data.hcp_vault_secrets_secret.stripeSecret.secret_value
+#     STRIPE_SIGNING_SECRET = data.hcp_vault_secrets_secret.stripeSigningSecret.secret_value
+#     DYNAMODB_NAME         = var.dynamodb_table
+#   }
+# }
+
 ###############DELETE MOVIE OWNERSHIP#####################
 # Create a lambda function to delete movie ownership. It receives events from eventbridge scheduler
-resource "aws_lambda_function" "delete_movie_ownership_lambda_function" {
-  filename      = data.archive_file.delete_movie_ownership_zip.output_path
-  function_name = var.delete_movie_ownership_lambda_name
-  role          = aws_iam_role.movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_role.arn
-  handler       = "index.handler"
+# resource "aws_lambda_function" "delete_movie_ownership_lambda_function" {
+#   filename      = data.archive_file.delete_movie_ownership_zip.output_path
+#   function_name = var.delete_movie_ownership_lambda_name
+#   role          = aws_iam_role.movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_role.arn
+#   handler       = var.lambda_handler
 
-  # The filebase64sha256() function is available in Terraform 0.11.12 and later
-  # For Terraform 0.11.11 and earlier, use the base64sha256() function and the file() function:
-  # source_code_hash = "${base64sha256(file("lambda_function_payload.zip"))}"
-  source_code_hash = data.archive_file.delete_movie_ownership_zip.output_base64sha256
-  runtime          = var.lambda_runtime
-  layers = [
-    aws_lambda_layer_version.lambda_deps_layer.arn,
-    aws_lambda_layer_version.lambda_utils_layer.arn
-  ]
+#   # The filebase64sha256() function is available in Terraform 0.11.12 and later
+#   # For Terraform 0.11.11 and earlier, use the base64sha256() function and the file() function:
+#   # source_code_hash = "${base64sha256(file("lambda_function_payload.zip"))}"
+#   source_code_hash = data.archive_file.delete_movie_ownership_zip.output_base64sha256
+#   runtime          = var.lambda_runtime
+#   layers = [
+#     aws_lambda_layer_version.lambda_deps_layer.arn,
+#     aws_lambda_layer_version.lambda_utils_layer.arn
+#   ]
 
-  # environment {
-  #   variables = {
-  #     STRIPE_SECRET         = data.hcp_vault_secrets_secret.stripeSecret.secret_value
-  #     STRIPE_SIGNING_SECRET = data.hcp_vault_secrets_secret.stripeSigningSecret.secret_value
-  #     DYNAMODB_NAME         = var.dynamodb_table
-  #     # STRIPE_EVENT_BUS           = var.event_bus_name
-  #     # stripe_lambda_event_source = var.stripe_lambda_event_source
-  #   }
-  # }
-}
+#   # environment {
+#   #   variables = {
+#   #     STRIPE_SECRET         = data.hcp_vault_secrets_secret.stripeSecret.secret_value
+#   #     STRIPE_SIGNING_SECRET = data.hcp_vault_secrets_secret.stripeSigningSecret.secret_value
+#   #     DYNAMODB_NAME         = var.dynamodb_table
+#   #     # STRIPE_EVENT_BUS           = var.event_bus_name
+#   #     # stripe_lambda_event_source = var.stripe_lambda_event_source
+#   #   }
+#   # }
+# }
 
 # Create an IAM role for Eventbridge scheduler
 resource "aws_iam_role" "EventBridgeSchedulerRole" {
@@ -241,11 +297,11 @@ resource "aws_sqs_queue" "eventbridge_scheduler_delete_movie_ownership_dlq" {
 
 
 #Create a new Event Rule to send eventbridge messages to delete_movie_ownership_lambda_function
-resource "aws_cloudwatch_event_rule" "delete_movie_ownership_eventbridge_event_rule" {
-  name           = var.delete_movie_ownership_eventbridge_event_rule_name
-  event_pattern  = data.template_file.delete_movie_ownership_eventbridge_event_rule_pattern_template.rendered
-  event_bus_name = data.aws_cloudwatch_event_bus.stripe_webhook_event_bus.arn
-}
+# resource "aws_cloudwatch_event_rule" "delete_movie_ownership_eventbridge_event_rule" {
+#   name           = var.delete_movie_ownership_eventbridge_event_rule_name
+#   event_pattern  = data.template_file.delete_movie_ownership_eventbridge_event_rule_pattern_template.rendered
+#   event_bus_name = data.aws_cloudwatch_event_bus.stripe_webhook_event_bus.arn
+# }
 
 # TODO implement DELETE and GET functionality
 # TODO implement DLQs for lambdas or eventbridge
