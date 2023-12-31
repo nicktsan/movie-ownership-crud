@@ -1,4 +1,4 @@
-output "ConsumerFunction" {
-  value       = aws_lambda_function.put_movie_ownership_lambda_function.arn
-  description = "ConsumerFunction function name"
+output "PutFunction" {
+  value       = module.put_movie_ownership_lambda.ConsumerFunction
+  description = "PutFunction function arn"
 }

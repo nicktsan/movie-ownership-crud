@@ -1,0 +1,1 @@
+This module provisions a lambda function and sets it up as the event target for a Cloudwatch event rule.

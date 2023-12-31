@@ -25,6 +25,11 @@ variable "put_movie_ownership_lambda_name" {
   type        = string
 }
 
+variable "lambda_handler" {
+  description = "Name of the handler function for the lambda"
+  type        = string
+}
+
 variable "lambda_runtime" {
   description = "Runtime of the lambda functions"
   type        = string
@@ -37,6 +42,16 @@ variable "detail_type" {
 
 variable "stripe_lambda_event_source" {
   description = "source of the eventbridge event"
+  type        = string
+}
+
+variable "movie_ownership_lambda_deps_layer_name" {
+  description = "Name of the lambda dependency layer for movie ownership crud app"
+  type        = string
+}
+
+variable "lambda_utils_layer_name" {
+  description = "Name of the lambda utils layer for the movie ownership crud app"
   type        = string
 }
 
@@ -117,5 +132,10 @@ variable "delete_movie_ownership_event_type" {
 
 variable "stripe_eventbridge_scheduler_event_source" {
   description = "Event source for the delete movie ownership event rule pattern rule"
+  type        = string
+}
+
+variable "hcp_vault_secrets_app_name" {
+  description = "Name of the app from where hcp vault will access its secrets from"
   type        = string
 }
