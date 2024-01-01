@@ -1,3 +1,8 @@
+variable "environment" {
+  description = "Name of the execution environment"
+  type        = string
+}
+
 variable "lambda_name" {
   description = "Name of the lambda function"
   type        = string
@@ -83,4 +88,9 @@ variable "outputPath" {
 variable "environment_variables" {
   description = "Map of environment variables to be used in the lambda function"
   type        = map(string)
+}
+
+variable "dlq_name" {
+  description = "Name of the dead letter queue"
+  type        = string
 }

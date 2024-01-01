@@ -132,10 +132,4 @@ async function fulfillOrder(lineItemdata: Stripe.LineItem, event: EventBridgeEve
     return null
 }
 
-async function scheduleDeleteMovieOwnership(ownershipDetails: Record<string, any>): Promise<void> {
-    if (ownershipDetails.purchaseType.toLowerCase().includes("rental")) {
-        // implement schedule calling and creation
-        console.log("Scheduling future ownership deletion.")
-    }
-}
-export { TEventVerification, getStripe, getClient, getDocClient, verifyEventAsync, fulfillOrder, scheduleDeleteMovieOwnership }
+export { TEventVerification, getStripe, getClient, getDocClient, verifyEventAsync, fulfillOrder }

@@ -5,18 +5,6 @@ data "archive_file" "lambda_zip" {
   output_path = var.outputPath
 }
 
-# data to grab the stripe secret from hcp vault secrets
-# data "hcp_vault_secrets_secret" "stripeSecret" {
-#   app_name    = var.hcp_vault_secrets_app_name
-#   secret_name = var.stripe_secret_key
-# }
-
-# # data to grab the stripe webhook signing secret from hcp vault secrets
-# data "hcp_vault_secrets_secret" "stripeSigningSecret" {
-#   app_name    = var.hcp_vault_secrets_app_name
-#   secret_name = var.stripe_webhook_signing_secret
-# }
-
 # template file to use for the PUT event rule pattern.
 data "template_file" "eventbridge_event_rule_pattern_template" {
   template = file(var.eventbridge_event_rule_pattern_template_file_path)
@@ -27,7 +15,16 @@ data "template_file" "eventbridge_event_rule_pattern_template" {
   }
 }
 
-# Eventbridge Event Bus that the PUT and DELETE lambdas will be sourcing events from
+# Eventbridge Event Bus that the PUT lambda will be sourcing events from
 data "aws_cloudwatch_event_bus" "stripe_webhook_event_bus" {
   name = var.event_bus_name
+}
+
+# Template file for the dlq policy
+data "template_file" "dlq_policy_template" {
+  template = file("./modules/lambda_to_dynamodb/template/dlq_policy.tpl")
+  vars = {
+    dlqArn       = aws_sqs_queue.dlq.arn
+    eventRuleArn = aws_cloudwatch_event_rule.eventbridge_event_rule.arn
+  }
 }
