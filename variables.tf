@@ -85,6 +85,11 @@ variable "put_movie_ownership_eventbridge_event_rule_name" {
   type        = string
 }
 
+variable "put_movie_ownership_dlq_name" {
+  description = "Name of the dlq for put_movie_ownership lambda"
+  type        = string
+}
+
 variable "dynamodb_table" {
   description = "Name of the dynamodb table for movie ownership crud app"
   type        = string

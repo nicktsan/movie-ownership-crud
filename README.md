@@ -1,4 +1,4 @@
-A solution that handles stripe webhooks by using AWS http API Gateway, SQS, SQS dead letter queue, and Lambda. It is part of the method for https://github.com/nicktsan/movies_frontend_nextjs to fulfill orders. This project takes events receives events from https://github.com/nicktsan/stripe-webhook to perform PUT and DELETE operations on a database. GET operations are performed from https://github.com/nicktsan/movies_frontend_nextjs.
+A solution that handles stripe webhooks by using AWS http API Gateway, SQS, SQS dead letter queue, and Lambda. It is part of the method for https://github.com/nicktsan/movies_frontend_nextjs to fulfill orders. This project takes events receives events from https://github.com/nicktsan/stripe-webhook to perform PUT operations on a database. GET operations are performed from https://github.com/nicktsan/movies_frontend_nextjs.
 
 Make sure to set up STRIPE_API_KEY environment variable
 Console Command Example: export STRIPE_API_KEY="<api-key>"

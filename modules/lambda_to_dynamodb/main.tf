@@ -29,6 +29,9 @@ resource "aws_cloudwatch_event_target" "eventbridge_target" {
   rule           = aws_cloudwatch_event_rule.eventbridge_event_rule.name
   arn            = aws_lambda_function.lambda_function.arn
   event_bus_name = data.aws_cloudwatch_event_bus.stripe_webhook_event_bus.arn
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
 # Allow Eventbridge to invoke the lambda
 resource "aws_lambda_permission" "allow_cloudwatch" {
@@ -37,3 +40,24 @@ resource "aws_lambda_permission" "allow_cloudwatch" {
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.eventbridge_event_rule.arn
 }
+
+#SQS to receive dead letters
+resource "aws_sqs_queue" "dlq" {
+  name                      = var.dlq_name
+  message_retention_seconds = 1209600
+  sqs_managed_sse_enabled   = true
+  tags = {
+    Environment = var.environment
+  }
+  redrive_allow_policy = jsonencode({
+    redrivePermission = "allowAll"
+  })
+}
+
+# Set the policy of the dlq
+resource "aws_sqs_queue_policy" "dlq_policy" {
+  queue_url = aws_sqs_queue.dlq.id
+  policy    = data.template_file.dlq_policy_template.rendered
+}
+
+# TODO implement alerts for DLQs
