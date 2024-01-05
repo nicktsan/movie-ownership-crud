@@ -1,12 +1,12 @@
 #IAM Resource block for Lambda IAM role.
-resource "aws_iam_role" "movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_role" {
-  name               = var.movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_iam_role
-  assume_role_policy = data.template_file.movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_iam_role_template.rendered
+resource "aws_iam_role" "lambda_to_dynamodb_role" {
+  name               = var.lambda_to_dynamodb_iam_role
+  assume_role_policy = data.template_file.lambda_to_dynamodb_iam_role_template.rendered
 }
 
-#attach both IAM Lambda Logging Policy to movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_role
+#attach both IAM Lambda Logging Policy to lambda_to_dynamodb_role
 resource "aws_iam_role_policy_attachment" "attach_cloudwatch_iam_policy_for_lambda" {
-  role       = aws_iam_role.movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_role.name
+  role       = aws_iam_role.lambda_to_dynamodb_role.name
   policy_arn = data.aws_iam_policy.lambda_basic_execution_role_policy.arn
 }
 
@@ -121,16 +121,16 @@ resource "aws_iam_policy" "lambda_to_dynamodb_crud_policy" {
   }
 }
 
-# Attach lambda_to_dynamodb_crud_policy to movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_role
+# Attach lambda_to_dynamodb_crud_policy to lambda_to_dynamodb_role
 resource "aws_iam_role_policy_attachment" "lambda_to_dynamodb_crud_policy_attachment" {
-  role       = aws_iam_role.movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_role.name
+  role       = aws_iam_role.lambda_to_dynamodb_role.name
   policy_arn = aws_iam_policy.lambda_to_dynamodb_crud_policy.arn
 }
 
 ########################PUT MOVIE OWNERSHIP##########################
 # Module for lambda to recieve messages from eventbridge and put data to dynamodb
 module "put_movie_ownership_lambda" {
-  source         = "./modules/lambda_to_dynamodb"
+  source         = "./modules/eventbridge_to_lambda_to_dynamodb"
   environment    = var.environment
   lambda_name    = var.put_movie_ownership_lambda_name
   lambda_handler = var.lambda_handler
@@ -144,7 +144,7 @@ module "put_movie_ownership_lambda" {
   stripe_lambda_event_source                        = var.stripe_lambda_event_source
   event_type                                        = var.stripe_checkout_session_completed_event_type
   event_bus_name                                    = var.event_bus_name
-  lambda_role                                       = aws_iam_role.movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_role.arn
+  lambda_role                                       = aws_iam_role.lambda_to_dynamodb_role.arn
   sourceDir                                         = "${path.module}/lambda/dist/handlers/put_movie_ownership/"
   outputPath                                        = "${path.module}/lambda/dist/put_movie_ownership.zip"
   environment_variables = {

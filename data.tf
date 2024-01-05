@@ -28,8 +28,8 @@ data "archive_file" "deps_layer_code_zip" {
 }
 
 # template file to use for lambda
-data "template_file" "movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_iam_role_template" {
-  template = file("./template/movie_ownership_crud_eventbridge_to_lambda_to_dynamodb_iam_role.tpl")
+data "template_file" "lambda_to_dynamodb_iam_role_template" {
+  template = file("./template/lambda_to_dynamodb_iam_role.tpl")
 }
 
 # Provides write permissions to CloudWatch Logs.
@@ -45,30 +45,3 @@ data "template_file" "lambda_to_dynamodb_crud_policy_template" {
     dynamodb_table = var.dynamodb_table
   }
 }
-
-# Setup for delete_movie_ownership lambda
-data "archive_file" "delete_movie_ownership_zip" {
-  type        = "zip"
-  source_dir  = "${path.module}/lambda/dist/handlers/delete_movie_ownership/"
-  output_path = "${path.module}/lambda/dist/delete_movie_ownership.zip"
-}
-
-# Template file for the Eventbridge Scheduler role
-data "template_file" "EventBridgeSchedulerRole_template" {
-  template = file("./template/EventBridgeSchedulerRole.tpl")
-}
-
-# Template file for the IAM Policy to allow eventbridge to invoke lambda
-data "template_file" "EventBridgeSchedulerPolicy_template" {
-  template = file("./template/EventBridgeSchedulerPolicy.tpl")
-}
-
-# Template file to for the delete movie ownership event rule pattern
-# data "template_file" "delete_movie_ownership_eventbridge_event_rule_pattern_template" {
-#   template = file("./template/eventbridge_event_rule_pattern.tpl")
-
-#   vars = {
-#     StripeEventbridgeSchedulerEventSource = var.stripe_eventbridge_scheduler_event_source
-#     DeleteMovieOwnershipEventType         = var.delete_movie_ownership_event_type
-#   }
-# }
