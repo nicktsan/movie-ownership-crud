@@ -1,3 +1,13 @@
+variable "sourceDir" {
+  description = "Directory of the source for the lambda"
+  type        = string
+}
+
+variable "outputPath" {
+  description = "Output path of the zip file for the lambda"
+  type        = string
+}
+
 variable "lambda_name" {
   description = "Name of the lambda function"
   type        = string
@@ -30,5 +40,21 @@ variable "environment_variables" {
 
 variable "api_gateway_execution_arn" {
   description = "Execution ARN of api gateway"
+  type        = string
+}
+
+
+variable "apigateway_id" {
+  description = "Id of the api gateway"
+  type        = string
+}
+
+variable "apigateway_route_key" {
+  description = "route key of the apigateway"
+  type        = string
+}
+
+variable "api_gateway_execution_arn_suffix" {
+  description = "Suffix for the api gateway execution arn"
   type        = string
 }

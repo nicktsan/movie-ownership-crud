@@ -17,6 +17,24 @@ resource "aws_lambda_function" "lambda_function" {
   }
 }
 
+resource "aws_apigatewayv2_integration" "apigw_lambda" {
+  api_id = var.apigateway_id //aws_apigatewayv2_api.http_lambda.id
+
+  integration_uri        = aws_lambda_function.lambda_function.invoke_arn
+  integration_type       = "AWS_PROXY"
+  integration_method     = "POST"
+  connection_type        = "INTERNET"
+  passthrough_behavior   = "WHEN_NO_MATCH"
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_route" "api_route" {
+  api_id = var.apigateway_id //aws_apigatewayv2_api.http_lambda.id
+
+  route_key = var.apigateway_route_key
+  target    = "integrations/${aws_apigatewayv2_integration.apigw_lambda.id}"
+}
+
 # Allow API Gateway to invoke the lambda
 resource "aws_lambda_permission" "api_gw" {
   statement_id  = "AllowExecutionFromAPIGateway"
@@ -24,5 +42,5 @@ resource "aws_lambda_permission" "api_gw" {
   function_name = aws_lambda_function.lambda_function.function_name
   principal     = "apigateway.amazonaws.com"
 
-  source_arn = var.api_gateway_execution_arn //"${aws_apigatewayv2_api.http_lambda.execution_arn}/*/*"
+  source_arn = "${var.api_gateway_execution_arn}${var.api_gateway_execution_arn_suffix}" //"${aws_apigatewayv2_api.http_lambda.execution_arn}/*/*"
 }

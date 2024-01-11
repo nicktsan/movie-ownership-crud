@@ -154,6 +154,77 @@ module "put_movie_ownership_lambda" {
   }
   dlq_name = var.put_movie_ownership_dlq_name
 }
+########################SELECT ALL MOVIE OWNERSHIP##########################
+# Module for lambda to receive messages from api gateway and select all movies owned by user
+#Test with https://keoncigqy7.execute-api.us-east-1.amazonaws.com/movieownership
+module "select_all_movie_ownership" {
+  source         = "./modules/apigateway_to_lambda_to_dynamodb"
+  sourceDir      = "${path.module}/lambda/dist/handlers/select_all_movie_ownership/"
+  outputPath     = "${path.module}/lambda/dist/select_all_movie_ownership.zip"
+  lambda_name    = var.select_all_movie_ownership_name
+  lambda_role    = aws_iam_role.lambda_to_dynamodb_role.arn
+  lambda_handler = var.lambda_handler
+  lambda_runtime = var.lambda_runtime
+  lambda_layers = [
+    aws_lambda_layer_version.lambda_deps_layer.arn,
+    aws_lambda_layer_version.lambda_utils_layer.arn
+  ]
+  environment_variables = {
+    STRIPE_SECRET         = data.hcp_vault_secrets_secret.stripeSecret.secret_value
+    STRIPE_SIGNING_SECRET = data.hcp_vault_secrets_secret.stripeSigningSecret.secret_value
+    DYNAMODB_NAME         = var.dynamodb_table
+    ROUTE_KEY             = var.get_all_apigateway_route_key
+  }
+  api_gateway_execution_arn        = aws_apigatewayv2_api.http_lambda.execution_arn
+  apigateway_id                    = aws_apigatewayv2_api.http_lambda.id
+  apigateway_route_key             = var.get_all_apigateway_route_key
+  api_gateway_execution_arn_suffix = var.get_all_api_gateway_execution_arn_suffix
+}
 
-#  TODO Implement GET functionality
+#========================================================================
+// API Gateway section
+#========================================================================
+
+resource "aws_apigatewayv2_api" "http_lambda" {
+  name          = var.apigw_name
+  protocol_type = var.api_protocol_type
+}
+
+resource "aws_apigatewayv2_stage" "default" { //todo https://awstip.com/building-a-serverless-crud-api-on-aws-with-terraform-and-python-13187146b4e8
+  api_id = aws_apigatewayv2_api.http_lambda.id
+
+  name        = var.apigateway_stage_name
+  auto_deploy = true
+
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.api_gw.arn
+
+    format = jsonencode({
+      requestId               = "$context.requestId"
+      sourceIp                = "$context.identity.sourceIp"
+      requestTime             = "$context.requestTime"
+      protocol                = "$context.protocol"
+      httpMethod              = "$context.httpMethod"
+      resourcePath            = "$context.resourcePath"
+      routeKey                = "$context.routeKey"
+      status                  = "$context.status"
+      responseLength          = "$context.responseLength"
+      authorizererror         = "$context.authorizer.error",
+      errormessage            = "$context.error.message",
+      errormessageString      = "$context.error.messageString",
+      errorresponseType       = "$context.error.responseType",
+      integrationerror        = "$context.integration.error",
+      integrationErrorMessage = "$context.integrationErrorMessage"
+      }
+    )
+  }
+  depends_on = [aws_cloudwatch_log_group.api_gw]
+}
+
+resource "aws_cloudwatch_log_group" "api_gw" {
+  name = "/aws/api_gw/${var.apigw_name}"
+
+  # retention_in_days = var.apigw_log_retention
+}
+
 # TODO implement alerts for DLQs

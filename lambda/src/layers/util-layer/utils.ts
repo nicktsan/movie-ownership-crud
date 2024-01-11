@@ -1,7 +1,7 @@
-import { EventBridgeEvent /*, Context, Callback*/ } from "aws-lambda";
+import { EventBridgeEvent, APIGatewayProxyEventV2 /*, Context, Callback*/ } from "aws-lambda";
 import Stripe from "stripe";
 import { DynamoDBClient, ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
-import { PutCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
+import { PutCommand, QueryCommand, QueryCommandOutput, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 
 //An interface for the purposes of returning both a boolean and a Stripe.Event for verifyEventAsync
 interface TEventVerification {
@@ -132,4 +132,25 @@ async function fulfillOrder(lineItemdata: Stripe.LineItem, event: EventBridgeEve
     return null
 }
 
-export { TEventVerification, getStripe, getClient, getDocClient, verifyEventAsync, fulfillOrder }
+//Get all items owned by the customer. Customer information provided in the event body.
+async function queryAllItems(docClient: DynamoDBDocumentClient | null, event: APIGatewayProxyEventV2): Promise<QueryCommandOutput | undefined> {
+    if (event.body) {
+        const body = JSON.parse(event.body)
+        const command = new QueryCommand({
+            TableName: process.env.DYNAMODB_NAME,
+            KeyConditionExpression:
+                "customer = :Customer",
+            ExpressionAttributeValues: {
+                ":Customer": body.customer,
+            },
+            ConsistentRead: true,
+        });
+
+        const response = await docClient?.send(command);
+        console.log("response?.Items: ", response?.Items);
+        return response;
+    }
+    return undefined;
+}
+
+export { TEventVerification, getStripe, getClient, getDocClient, verifyEventAsync, fulfillOrder, queryAllItems }

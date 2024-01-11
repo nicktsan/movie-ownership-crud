@@ -104,3 +104,33 @@ variable "hcp_vault_secrets_app_name" {
   description = "Name of the app from where hcp vault will access its secrets from"
   type        = string
 }
+
+variable "apigw_name" {
+  description = "Name of the api gateway"
+  type        = string
+}
+
+variable "api_protocol_type" {
+  description = "protocol_type for the api gateway"
+  type        = string
+}
+
+variable "apigateway_stage_name" {
+  description = "Name of the apigateway stage"
+  type        = string
+}
+
+variable "select_all_movie_ownership_name" {
+  description = "Name of the select_all_movie_ownership_lambda"
+  type        = string
+}
+
+variable "get_all_apigateway_route_key" {
+  description = "Route key for the GET api gateway"
+  type        = string
+}
+
+variable "get_all_api_gateway_execution_arn_suffix" {
+  description = "Suffix for the get all api gateway execution arn"
+  type        = string
+}
