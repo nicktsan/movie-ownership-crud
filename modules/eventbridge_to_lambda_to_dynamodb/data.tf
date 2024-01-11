@@ -22,7 +22,7 @@ data "aws_cloudwatch_event_bus" "stripe_webhook_event_bus" {
 
 # Template file for the dlq policy
 data "template_file" "dlq_policy_template" {
-  template = file("./modules/lambda_to_dynamodb/template/dlq_policy.tpl")
+  template = file("./modules/eventbridge_to_lambda_to_dynamodb/template/dlq_policy.tpl")
   vars = {
     dlqArn       = aws_sqs_queue.dlq.arn
     eventRuleArn = aws_cloudwatch_event_rule.eventbridge_event_rule.arn

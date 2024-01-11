@@ -1,0 +1,1 @@
+This module creates a lambda that receives messages from API Gateway and performs CRUD operations on a DynamoDB database
