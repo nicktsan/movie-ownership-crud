@@ -138,10 +138,17 @@ async function queryAllItems(docClient: DynamoDBDocumentClient | null, event: AP
         const body = JSON.parse(event.body)
         const command = new QueryCommand({
             TableName: process.env.DYNAMODB_NAME,
+            // Get all items where puchaseType = "Buy" or 
+            // (purchaseType contains "rental" and  rentalExpiryDateEpochSeconds < current time in unix seconds)
+            FilterExpression:
+                "purchaseType = :Buy or (contains(purchaseType, :Rental) and rentalExpiryDateEpochSeconds < :CurrentUnixTimeSeconds)",
             KeyConditionExpression:
                 "customer = :Customer",
             ExpressionAttributeValues: {
                 ":Customer": body.customer,
+                ":Buy": "Buy",
+                ":Rental": "rental",
+                ":CurrentUnixTimeSeconds": Math.floor(Date.now() / 1000)
             },
             ConsistentRead: true,
         });
