@@ -1,3 +1,9 @@
+build:
+	yarn --cwd lambda build
+
+package:
+	yarn --cwd lambda package
+
 init:
 	terraform init
 
@@ -17,4 +23,4 @@ sync:
 destroy:
 	terraform destroy -var-file input.tfvars
 
-all: init sync validate plan apply
+all: build package init sync validate plan apply
