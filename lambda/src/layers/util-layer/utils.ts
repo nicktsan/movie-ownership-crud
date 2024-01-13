@@ -154,10 +154,34 @@ async function queryAllItems(docClient: DynamoDBDocumentClient | null, event: AP
         });
 
         const response = await docClient?.send(command);
-        console.log("response?.Items: ", response?.Items);
+        // console.log("response?.Items: ", response?.Items);
         return response;
     }
     return undefined;
 }
+//Function to get product information from stripe
+async function getStripeProduct(resItems: Record<string, any>[] | undefined, stripe: Stripe | null): Promise<Stripe.Product[] | undefined> {
+    let queryCondition: string = ""
+    for (let i = 0; i < resItems!.length; i++) {
+        if (i != 0) {
+            queryCondition = queryCondition + ' OR '
+        }
+        queryCondition = queryCondition + `name:'` + resItems![i].title.trim() + `'`
+    }
+    console.log("queryCondtion: ", queryCondition)
+    const productsearch = await stripe?.products.search({
+        query: queryCondition
+    })
+    // console.log("productsearch?.data: ", productsearch?.data)
+    return productsearch?.data
+}
+//function to attach image data to response body
+async function attachImageToResponse(resItems: Record<string, any>[] | undefined, products: Stripe.Product[] | undefined): Promise<Record<string, any>[] | undefined> {
+    resItems?.forEach(item => {
+        const matchingProduct = products?.find((product) => product.name === item.title)
+        item.image = matchingProduct?.images[0]
+    });
+    return resItems
+}
 
-export { TEventVerification, getStripe, getClient, getDocClient, verifyEventAsync, fulfillOrder, queryAllItems }
+export { TEventVerification, getStripe, getClient, getDocClient, verifyEventAsync, fulfillOrder, queryAllItems, getStripeProduct, attachImageToResponse }
