@@ -132,10 +132,10 @@ async function fulfillOrder(lineItemdata: Stripe.LineItem, event: EventBridgeEve
     return null
 }
 
-//Get all items owned by the customer. Customer information provided in the event body.
+//Get all items owned by the customer. Customer information provided in the event header.
 async function queryAllItems(docClient: DynamoDBDocumentClient | null, event: APIGatewayProxyEventV2): Promise<QueryCommandOutput | undefined> {
-    if (event.body) {
-        const body = JSON.parse(event.body)
+    if (event.headers) {
+        const header = event.headers
         const command = new QueryCommand({
             TableName: process.env.DYNAMODB_NAME,
             // Get all items where puchaseType = "Buy" or 
@@ -145,7 +145,7 @@ async function queryAllItems(docClient: DynamoDBDocumentClient | null, event: AP
             KeyConditionExpression:
                 "customer = :Customer",
             ExpressionAttributeValues: {
-                ":Customer": body.customer,
+                ":Customer": header.customer,
                 ":Buy": "Buy",
                 ":Rental": "rental",
                 ":CurrentUnixTimeSeconds": Math.floor(Date.now() / 1000)
