@@ -141,7 +141,7 @@ async function queryAllItems(docClient: DynamoDBDocumentClient | null, event: AP
             // Get all items where puchaseType = "Buy" or 
             // (purchaseType contains "rental" and  rentalExpiryDateEpochSeconds < current time in unix seconds)
             FilterExpression:
-                "purchaseType = :Buy or (contains(purchaseType, :Rental) and rentalExpiryDateEpochSeconds < :CurrentUnixTimeSeconds)",
+                "purchaseType = :Buy or (contains(purchaseType, :Rental) and rentalExpiryDateEpochSeconds > :CurrentUnixTimeSeconds)",
             KeyConditionExpression:
                 "customer = :Customer",
             ExpressionAttributeValues: {
