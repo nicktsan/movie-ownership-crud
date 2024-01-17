@@ -97,6 +97,7 @@ async function fulfillOrder(lineItemdata: Stripe.LineItem, event: EventBridgeEve
     const ownershipDetails: Record<string, any> = {
         customer: email,
         title: title,
+        lowercaseTitle: title?.toLowerCase(),
         purchaseType: purchaseType,
         purchaseDateEpochSeconds: purchaseDateEpochSeconds,
         rentalExpiryDateEpochSeconds: rentalExpiryDateEpochSeconds
@@ -159,6 +160,39 @@ async function queryAllItems(docClient: DynamoDBDocumentClient | null, event: AP
     }
     return undefined;
 }
+
+//Search for specific items owned by the customer. Customer information provided in the event header.
+async function queryItemsByTitle(docClient: DynamoDBDocumentClient | null, event: APIGatewayProxyEventV2): Promise<QueryCommandOutput | undefined> {
+    console.info('received request get by title:', event);
+    const regex2 = (/(%20|\+)/g);
+    if (event.headers) {
+        const header = event.headers
+        const command = new QueryCommand({
+            TableName: process.env.DYNAMODB_NAME,
+            // Get all items where puchaseType = "Buy" or 
+            // (purchaseType contains "rental" and  rentalExpiryDateEpochSeconds < current time in unix seconds)
+            //and lowercaseTitle contains title parameter
+            FilterExpression:
+                "contains(lowercaseTitle, :Title) and (purchaseType = :Buy or (contains(purchaseType, :Rental) and rentalExpiryDateEpochSeconds > :CurrentUnixTimeSeconds))",
+            KeyConditionExpression:
+                "customer = :Customer",
+            ExpressionAttributeValues: {
+                ":Customer": header.customer,
+                ":Buy": "Buy",
+                ":Rental": "rental",
+                ":CurrentUnixTimeSeconds": Math.floor(Date.now() / 1000),
+                ':Title': event.pathParameters?.title?.replace(regex2, ' ').toLowerCase()
+            },
+            ConsistentRead: true,
+        });
+
+        const response = await docClient?.send(command);
+        // console.log("response?.Items: ", response?.Items);
+        return response;
+    }
+    return undefined;
+}
+
 //Function to get product information from stripe
 async function getStripeProduct(resItems: Record<string, any>[] | undefined, stripe: Stripe | null): Promise<Stripe.Product[] | undefined> {
     let queryCondition: string = ""
@@ -184,4 +218,4 @@ async function attachImageToResponse(resItems: Record<string, any>[] | undefined
     return resItems
 }
 
-export { TEventVerification, getStripe, getClient, getDocClient, verifyEventAsync, fulfillOrder, queryAllItems, getStripeProduct, attachImageToResponse }
+export { TEventVerification, getStripe, getClient, getDocClient, verifyEventAsync, fulfillOrder, queryAllItems, queryItemsByTitle, getStripeProduct, attachImageToResponse }
