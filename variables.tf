@@ -134,3 +134,18 @@ variable "get_all_api_gateway_execution_arn_suffix" {
   description = "Suffix for the get all api gateway execution arn"
   type        = string
 }
+
+variable "select_specific_movie_ownership_name" {
+  description = "Name of the select_specific_movie_ownership_name lambda"
+  type        = string
+}
+
+variable "get_specific_apigateway_route_key" {
+  description = "Route key for the GET specific api gateway"
+  type        = string
+}
+
+variable "get_specific_api_gateway_execution_arn_suffix" {
+  description = "Suffix for the get specific api gateway execution arn"
+  type        = string
+}
