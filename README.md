@@ -1,3 +1,15 @@
+Prerequisites:
+- backend in https://github.com/nicktsan/aws_backend/tree/main deployed
+- The Terraform CLI (1.2.0+) installed.
+- The AWS CLI installed.
+- AWS account and associated credentials that allow you to create resources.
+- Stripe account
+- Stripe API Key configured
+- Stripe webhook configured
+- Hashicorp vault configured
+- API Gateway Logging role set up. A detailed guide can be found at https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-logging.html
+Read the Terraform/AWS setup tutorials at https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli and https://developer.hashicorp.com/terraform/tutorials/aws-get-started/aws-build for detailed instructions.
+
 A solution that handles stripe webhooks by using AWS http API Gateway, SQS, SQS dead letter queue, and Lambda. It is part of the method for https://github.com/nicktsan/movies_frontend_nextjs to fulfill orders. This project takes events receives events from https://github.com/nicktsan/stripe-webhook to perform PUT operations on a database. GET operations are performed from https://github.com/nicktsan/movies_frontend_nextjs.
 
 Make sure to set up STRIPE_API_KEY environment variable

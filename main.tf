@@ -25,10 +25,9 @@ resource "aws_lambda_layer_version" "lambda_deps_layer" {
 }
 # Create an s3 resource for storing the utils_layer
 resource "aws_lambda_layer_version" "lambda_utils_layer" {
-  layer_name = var.lambda_utils_layer_name
-  s3_bucket  = aws_s3_bucket.dev_movie_ownership_crud_bucket.id #conflicts with filename
-  s3_key     = aws_s3_object.lambda_utils_layer_s3_storage.key  #conflicts with filename
-  # filename         = data.archive_file.utils_layer_code_zip.output_path
+  layer_name       = var.lambda_utils_layer_name
+  s3_bucket        = aws_s3_bucket.dev_movie_ownership_crud_bucket.id #conflicts with filename
+  s3_key           = aws_s3_object.lambda_utils_layer_s3_storage.key  #conflicts with filename
   source_code_hash = data.archive_file.utils_layer_code_zip.output_base64sha256
 
   compatible_runtimes = [var.lambda_runtime]

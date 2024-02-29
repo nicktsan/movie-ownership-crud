@@ -105,13 +105,6 @@ async function fulfillOrder(lineItemdata: Stripe.LineItem, event: EventBridgeEve
 
     const command = new PutCommand({
         TableName: process.env.DYNAMODB_NAME,
-        // Item: {
-        //     customer: email,
-        //     title: title,
-        //     purchaseType: purchaseType,
-        //     purchaseDateEpochSeconds: purchaseDateEpochSeconds,
-        //     rentalExpiryDateEpochSeconds: rentalExpiryDateEpochSeconds
-        // },
         Item: ownershipDetails,
         ConditionExpression: 'attribute_not_exists(customer) AND attribute_not_exists(title)'
     });
