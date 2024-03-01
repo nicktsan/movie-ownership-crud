@@ -67,7 +67,7 @@ resource "aws_s3_object" "lambda_utils_layer_s3_storage" {
 }
 
 resource "aws_s3_bucket" "dev_movie_ownership_crud_bucket" {
-  bucket = "movie-ownership-crud-bucket"
+  bucket = "movie-ownership-crud-bucket2"
 
   tags = {
     Name        = "My movie_ownership_crud dev bucket"
