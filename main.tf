@@ -92,8 +92,8 @@ resource "aws_s3_bucket_ownership_controls" "dev_movie_ownership_crud_bucket_acl
 resource "aws_dynamodb_table" "movie_ownership_table" {
   name           = var.dynamodb_table
   billing_mode   = "PROVISIONED"
-  read_capacity  = 25
-  write_capacity = 25
+  read_capacity  = 5
+  write_capacity = 5
   hash_key       = "customer" #partition key
   range_key      = "title"    #sort key
 
